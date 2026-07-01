@@ -11,6 +11,7 @@ from job_description import render_job_description_page
 from onboarding_guide import render_onboarding_guide_page
 from ai_consulting import render_ai_consulting_page
 from hr_calculator import render_calculator_page
+from hospital_forms import show_hospital_forms
 
 # ── 페이지 설정 ──────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -603,6 +604,7 @@ with st.sidebar:
             "📝 직무기술서(JD) 작성",
             "🧮 인사노무 스마트 계산기",
             "🤖 AI 인사노무 상담",
+            "📄 병원용 서식 다운로드",
             "🎓 법정의무교육 가이드",
             "🩺 의료인 보수교육",
             "📅 연간 인사노무 일정",
@@ -632,6 +634,8 @@ elif menu == "🧮 인사노무 스마트 계산기":
     render_calculator_page()
 elif menu == "🤖 AI 인사노무 상담":
     render_ai_consulting_page()
+elif menu == "📄 병원용 서식 다운로드":
+    show_hospital_forms()
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 기존 페이지: 홈

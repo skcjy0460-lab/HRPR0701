@@ -267,75 +267,65 @@ def render_calculator_page():
         </div>
         """, unsafe_allow_html=True)
 
-        leave_type = st.radio("근속 기간 선택", ["1년 미만 (입사 후 1년 미경과)", "1년 이상"], horizontal=True)
+        c1, c2 = st.columns(2)
+        with c1:
+            join_date = st.date_input("입사일 선택", value=date(2023, 1, 1))
+            base_date = st.date_input("기준일 선택 (오늘)", value=date.today())
+        with c2:
+            att_rate = st.number_input("연간 출근율 (%)", min_value=0.0, max_value=100.0, value=95.0, step=1.0,
+                                        help="80% 이상일 때 정상 연차 발생. 1년 미만은 매월 개근 기준.")
+            st.markdown("""
+            <div class="info-box" style="margin-top:10px; font-size:0.85rem;">
+              <b>계산 원칙:</b><br>
+              1. 1년 미만: 1개월 개근 시 1일 발생<br>
+              2. 1년 이상: 15일 + 2년마다 1일 가산
+            </div>
+            """, unsafe_allow_html=True)
 
-        if leave_type == "1년 미만 (입사 후 1년 미경과)":
-            c1, c2 = st.columns(2)
-            with c1:
-                months = st.number_input("개근한 개월 수 (1~11)", min_value=0, max_value=11, value=6)
-            with c2:
-                st.markdown("""
-                <div class="info-box" style="margin-top:28px;">
-                  1개월 개근 = 소정근로일 전부 출근<br>
-                  결근 1일이라도 있으면 해당 월 연차 미발생
-                </div>
-                """, unsafe_allow_html=True)
+        if st.button("연차 계산하기", key="calc_leave_new"):
+            # 근속 기간 계산
+            delta = base_date - join_date
+            total_days = delta.days
+            years = total_days // 365
+            months = (total_days % 365) // 30
 
-            if st.button("연차 계산", key="leave_under1"):
-                result = calc_annual_leave(months)
-                st.markdown(f"""
-                <div class="success-box">
-                  🌴 <b>발생 연차: {result['days']}일</b><br>
-                  {result['note']}
-                </div>
-                """, unsafe_allow_html=True)
+            if total_days < 0:
+                st.error("기준일이 입사일보다 빠를 수 없습니다.")
+            else:
+                if total_days < 365:
+                    # 1년 미만
+                    result = calc_annual_leave(months)
+                    st.markdown(f"""
+                    <div class="success-box">
+                      🌴 <b>근속 기간: {months}개월 ({total_days}일)</b><br>
+                      🎯 <b>발생 연차: {result['days']}일</b><br>
+                      <small>{result['note']}</small>
+                    </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    # 1년 이상
+                    result = calc_annual_leave(0, att_rate, True, years)
+                    st.markdown(f"""
+                    <div class="success-box">
+                      🌴 <b>근속 기간: {years}년 {months}개월 ({total_days}일)</b><br>
+                      🎯 <b>발생 연차: {result['days']}일</b><br>
+                      <small>{result['note']}</small>
+                    </div>
+                    """, unsafe_allow_html=True)
 
-                # 월별 발생 현황 표
-                st.markdown("**월별 연차 발생 현황:**")
+                # 연차 가이드 테이블
+                st.markdown("### 📅 근속연수별 연차 발생 가이드")
                 table_rows = ""
-                for m in range(1, 12):
-                    status = "✅ 발생" if m <= months else "⬜ 미발생"
-                    table_rows += f"<tr><td>{m}개월차</td><td>{status}</td><td>{min(m, 11)}일 (누계)</td></tr>"
-                st.markdown(f"""
-                <table class="styled-table">
-                  <tr><th>개월차</th><th>상태</th><th>누계 연차</th></tr>
-                  {table_rows}
-                </table>
-                """, unsafe_allow_html=True)
-
-        else:  # 1년 이상
-            c1, c2, c3 = st.columns(3)
-            with c1:
-                years_worked = st.number_input("근속 연수 (년)", min_value=1, max_value=30, value=3)
-            with c2:
-                att_rate = st.number_input("연간 출근율 (%)", min_value=0.0, max_value=100.0, value=95.0, step=1.0)
-            with c3:
-                st.markdown("""
-                <div class="info-box" style="margin-top:28px; font-size:0.82rem;">
-                  출근율 = 출근일수 / 소정근로일수 × 100
-                </div>
-                """, unsafe_allow_html=True)
-
-            if st.button("연차 계산", key="leave_over1"):
-                result = calc_annual_leave(0, att_rate, True, years_worked)
-                st.markdown(f"""
-                <div class="success-box">
-                  🌴 <b>발생 연차: {result['days']}일</b><br>
-                  {result['note']}
-                </div>
-                """, unsafe_allow_html=True)
-
-                # 연도별 연차 발생 테이블
-                st.markdown("**연도별 연차 발생 기준 (출근율 80% 이상 가정):**")
-                table_rows = ""
-                for y in range(1, 21):
+                for y in range(1, 11):
                     extra = min((y - 1) // 2, 10)
                     total = 15 + extra
-                    highlight = "background:#EAF4FD;" if y == years_worked else ""
-                    table_rows += f"<tr style='{highlight}'><td>{y}년차</td><td>15일 + {extra}일</td><td><b>{total}일</b></td></tr>"
+                    highlight = "background:#EAF4FD; font-weight:bold;" if y == years else ""
+                    table_rows += f"<tr style='{highlight}'><td>{y}년차</td><td>15일 + {extra}일 가산</td><td>{total}일</td></tr>"
+                
                 st.markdown(f"""
                 <table class="styled-table">
-                  <tr><th>근속 연수</th><th>계산</th><th>연차 일수</th></tr>
+                  <tr><th>근속 연수</th><th>산정 방식</th><th>발생 일수</th></tr>
+                  <tr style='{"background:#FFF9E6;" if total_days < 365 else ""}'><td>1년 미만</td><td>1개월 개근 시 1일</td><td>최대 11일</td></tr>
                   {table_rows}
                 </table>
                 """, unsafe_allow_html=True)
